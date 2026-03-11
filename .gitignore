@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# virtual environment
+.venv/
+venv/
+env/
+
+# build
+build/
+dist/
+*.egg-info/
+
+# test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# logs
+*.log
+
+# backup / temp files
+*~
+*.swp
+*.tmp
+
+# env files
+.env
