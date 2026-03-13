@@ -349,18 +349,46 @@ def sus_strategy(score, opponent_score, threshold=11, num_rolls=6):
 
 
 def final_strategy(score, opponent_score):
-    """Write a brief description of your final strategy.
+    """Write a brief description of your final strategy."""
+    goal = 100
 
-    *** YOUR DESCRIPTION HERE ***
-    """
-    # BEGIN PROBLEM 12
-    if sus_update(0, score, opponent_score) >= GOAL:
+    zero_score = sus_update(0, score, opponent_score, six_sided)
+    zero_gain = zero_score - score
+
+    # roll 0 can win immediately
+    if zero_score >= goal:
         return 0
-    if GOAL - score <= 6:
+
+    need = goal - score
+
+    # endgame strategy
+    if need <= 10:
+        if zero_gain >= 9:   # max(2, 12 - 3)
+            return 0
+        return 1
+
+    if need <= 12:
+        if zero_gain >= 10:  # max(4, 12 - 2)
+            return 0
         return 2
-    to_roll = sus_strategy(score, opponent_score)
-    return to_roll
-    # END PROBLEM 12
+
+    if need <= 18:
+        if zero_gain >= 11:  # max(6, 12 - 1)
+            return 0
+        return 3
+
+    # normal roll-0 check
+    if zero_gain >= 12:
+        return 0
+
+    # score difference adjustment
+    diff = score - opponent_score
+    if diff >= 20:
+        return 4
+    elif diff <= -15:
+        return 7
+    else:
+        return 5
 
 
 ##########################
@@ -382,3 +410,101 @@ def run(*args):
 
     if args.run_experiments:
         run_experiments()
+#########################
+#Learning best strategy #
+#########################
+def make_strategy(zero_threshold, lead_margin, behind_margin,
+                  safe_rolls, normal_rolls, risky_rolls,
+                  endgame1, endgame2, endgame3):
+    def strategy(score, opponent_score):
+        goal = 100
+        zero_score = sus_update(0, score, opponent_score, six_sided)
+        zero_gain = zero_score - score
+
+        if zero_score >= goal:
+            return 0
+
+        need = goal - score
+        if need <= endgame1:
+            if zero_gain >= max(2, zero_threshold - 3):
+                return 0
+            return 1
+        if need <= endgame2:
+            if zero_gain >= max(4, zero_threshold - 2):
+                return 0
+            return 2
+        if need <= endgame3:
+            if zero_gain >= max(6, zero_threshold - 1):
+                return 0
+            return 3
+
+        if zero_gain >= zero_threshold:
+            return 0
+
+        diff = score - opponent_score
+        if diff >= lead_margin:
+            return safe_rolls
+        elif diff <= -behind_margin:
+            return risky_rolls
+        else:
+            return normal_rolls
+
+    return strategy
+
+
+def stable_average_win_rate(strategy, times):
+    total = 0
+    i = 0
+    while i < times:
+        total = total + average_win_rate(strategy)
+        i = i + 1
+    return total / times
+
+
+def find_best_strategy():
+    best_win_rate = 0
+    best_params = None
+
+    for zero_threshold in [8, 10, 12, 14]:
+        for lead_margin in [10, 15, 20]:
+            for behind_margin in [10, 15, 20]:
+                for safe_rolls in [4, 5]:
+                    for normal_rolls in [5, 6]:
+                        for risky_rolls in [6, 7, 8]:
+                            for endgame1 in [6, 8, 10]:
+                                for endgame2 in [12, 15]:
+                                    for endgame3 in [18, 20, 22]:
+                                        if not (endgame1 < endgame2 < endgame3):
+                                            continue
+
+                                        strategy = make_strategy(
+                                            zero_threshold,
+                                            lead_margin,
+                                            behind_margin,
+                                            safe_rolls,
+                                            normal_rolls,
+                                            risky_rolls,
+                                            endgame1,
+                                            endgame2,
+                                            endgame3
+                                        )
+
+                                        win_rate = stable_average_win_rate(strategy, 2)
+
+                                        if win_rate > best_win_rate:
+                                            best_win_rate = win_rate
+                                            best_params = (
+                                                zero_threshold,
+                                                lead_margin,
+                                                behind_margin,
+                                                safe_rolls,
+                                                normal_rolls,
+                                                risky_rolls,
+                                                endgame1,
+                                                endgame2,
+                                                endgame3
+                                            )
+                                            print("new best:", best_win_rate, best_params)
+
+    print("best overall:", best_win_rate, best_params)
+    return best_win_rate, best_params
